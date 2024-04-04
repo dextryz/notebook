@@ -64,6 +64,7 @@ func publishEvent(e *nostr.Event, nsec string, relays []string) error {
 	return nil
 }
 
+// Last events are last. This ensures that doublicates are overwritten when stored.
 func requestSortedEvents(ctx context.Context, nsec string, relays []string) ([]*nostr.Event, error) {
 
 	var pub string
@@ -83,7 +84,7 @@ func requestSortedEvents(ctx context.Context, nsec string, relays []string) ([]*
 
 	events := queryRelays(ctx, filter, relays)
 
-	slices.SortFunc(events, func(a, b *nostr.Event) int { return int(b.CreatedAt - a.CreatedAt) })
+	slices.SortFunc(events, func(a, b *nostr.Event) int { return int(a.CreatedAt - b.CreatedAt) })
 
 	return events, nil
 }
