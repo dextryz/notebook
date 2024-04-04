@@ -38,14 +38,14 @@ func (s *Update) Name() string {
 }
 
 // 1. Assume the filename is the article identifier
-func (s *Update) Run(cfg *Config) error {
+func (s *Update) Run(container *Container) error {
 
 	ctx := context.Background()
 
 	identifier := strings.TrimSuffix(path.Base(s.filename), ".md")
 
 	// Pull event metadata
-	event, err := requestEventByIdentifier(ctx, cfg.Nsec, cfg.Relays, identifier)
+	event, err := requestEventByIdentifier(ctx, container.cfg.Nsec, container.cfg.Relays, identifier)
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (s *Update) Run(cfg *Config) error {
 	}
 	event.Content = string(data)
 
-	err = publishEvent(event, cfg.Nsec, cfg.Relays)
+	err = publishEvent(event, container.cfg.Nsec, container.cfg.Relays)
 	if err != nil {
 		return err
 	}

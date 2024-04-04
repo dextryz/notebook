@@ -8,6 +8,7 @@ import (
 
 type Note struct {
 	*nostr.Event
+	Path string // Full note path /tmp/zk/identifier.md
 }
 
 func (s *Note) Identifier() string {

@@ -2,12 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path"
-	"time"
-
-	"github.com/nbd-wtf/go-nostr"
 )
 
 // Implemenets the Runner interface
@@ -59,8 +57,9 @@ func (s *Create) Name() string {
 // 1. Check that title and content is non-empty
 // 2. Create the nostr event from the commandline arguments
 // 3. Publish the event to the config relays
-func (s *Create) Run(cfg *Config) error {
+func (s *Create) Run(container *Container) error {
 
+	// TODO move this to note opts
 	if s.title == "" {
 		return ErrNoTitle
 	}
@@ -68,32 +67,22 @@ func (s *Create) Run(cfg *Config) error {
 		return ErrNoContent
 	}
 
-	e := s.createEvent()
+	// Get the current notebook instance
+	nb, err := container.CurrentNotebook()
+	if err != nil {
+		return err
+	}
+	if nb == nil {
+		log.Fatalln("no notebook specified")
+	}
 
-	err := publishEvent(e, cfg.Nsec, cfg.Relays)
+	// Add note to this notebook and publish to nostr relays
+	note, err := nb.Add(s.title, s.content, s.hashtags)
 	if err != nil {
 		return err
 	}
 
+	fmt.Printf("Note created, open with editor: %s", note.Path)
+
 	return nil
-}
-
-func (s Create) createEvent() *nostr.Event {
-
-	var tags nostr.Tags
-
-	identifier := time.Now().Format("200601021504")
-	tags = append(tags, nostr.Tag{"d", identifier})
-	tags = append(tags, nostr.Tag{"title", s.title})
-
-	for _, v := range s.hashtags {
-		tags = append(tags, nostr.Tag{"t", v})
-	}
-
-	return &nostr.Event{
-		Kind:      nostr.KindArticle,
-		Content:   s.content,
-		CreatedAt: nostr.Now(),
-		Tags:      tags,
-	}
 }

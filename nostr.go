@@ -19,6 +19,11 @@ func publishEvent(e *nostr.Event, nsec string, relays []string) error {
 
 	ctx := context.Background()
 
+	// Means NOSTR env var is not set
+	if nsec == "" {
+		return nil
+	}
+
 	var sk string
 	var pub string
 	if _, s, err := nip19.Decode(nsec); err == nil {
