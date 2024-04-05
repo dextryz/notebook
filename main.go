@@ -19,25 +19,20 @@ type Runner interface {
 
 func main() {
 
-	cfgPath, ok := os.LookupEnv("NOSTR")
-	if !ok {
-		log.Fatalln("NOSTR env var not set")
-	}
-
-	cfg, err := LoadConfig(cfgPath)
+	cfg, err := LoadConfig(os.Getenv("NOSTR"))
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	// Since we want multiple commands to set a notebook we need
 	// general purpose container to check the current notebook state, the dtate of my editor and shell
-	container := NewContainer(cfg, "/tmp/zk")
+	container := NewContainer(cfg)
 
 	cmds := []Runner{
 		NewInit(),
-		NewList(),
 		NewCreate(),
-		NewUpdate(),
+		NewPush(),
+		NewList(),
 	}
 
 	args := os.Args[1:]

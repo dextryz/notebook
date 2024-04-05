@@ -3,16 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 )
-
-type FileStorage struct {
-	dir string
-}
 
 // 1. Notebook abstracts nostr, and therefore does not work with nostr.Event, rather with nz.Note
 
@@ -22,13 +18,8 @@ type Notebook struct {
 	fs  *FileStorage
 }
 
-func NewNotebook(cfg *Config, dir string) *Notebook {
-
-	// TODO: Handle the case for when dir already exists
-	err := os.Mkdir(dir, 0750)
-	if err != nil && !os.IsExist(err) {
-		log.Fatal(err)
-	}
+// TODO store notebook in KV storee
+func NewNotebook(cfg *Config, name, dir string) *Notebook {
 
 	fs := &FileStorage{
 		dir: dir,
@@ -41,6 +32,12 @@ func NewNotebook(cfg *Config, dir string) *Notebook {
 }
 
 func (s *Notebook) Init() ([]*Note, error) {
+
+	// Create the directory structure on the filesystem
+	err := s.fs.Init()
+	if err != nil {
+		return nil, err
+	}
 
 	// 1. Look inside local FS first for cached notes.
 
@@ -88,11 +85,21 @@ func (s *Notebook) FindNotes() ([]*Note, error) {
 	return notes, nil
 }
 
-func (s *Notebook) Add(title, content string, hashtags []string) (*Note, error) {
+// 1. Read file content from local filesystem
+// 2. Pull event metadata. If event has not been pushed before, ignore
+// 3. Push event with updated content and parameters
+// TODO: Add a caching layer for the note object itself.
+func (s *Notebook) Publish(filepath, title string, hashtags []string) error {
+
+	content, err := s.fs.Read(filepath)
+	if err != nil {
+		return err
+	}
 
 	var tags nostr.Tags
 
-	identifier := time.Now().Format("200601021504")
+	identifier := strings.TrimSuffix(path.Base(filepath), ".md")
+
 	tags = append(tags, nostr.Tag{"d", identifier})
 	tags = append(tags, nostr.Tag{"title", title})
 
@@ -102,40 +109,45 @@ func (s *Notebook) Add(title, content string, hashtags []string) (*Note, error) 
 
 	e := &nostr.Event{
 		Kind:      nostr.KindArticle,
-		Content:   content,
+		Content:   string(content),
 		CreatedAt: nostr.Now(),
 		Tags:      tags,
 	}
 
 	// 1. Publish event to nostr relays for distributed/global storage
 
-	err := publishEvent(e, s.cfg.Nsec, s.cfg.Relays)
+	// TODO maybe remove this and use Push expliciteyly
+	err = publishEvent(e, s.cfg.Nsec, s.cfg.Relays)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// 2. Store note on local file system for caching/local storage
+	fmt.Printf("[*] event published with ID: %s\n", e.ID)
+
+	return nil
+}
+
+// 1. Store note on local file system for caching/local storage
+func (s *Notebook) Add() (*Note, error) {
+
+	var tags nostr.Tags
+
+	identifier := time.Now().Format("200601021504")
+	tags = append(tags, nostr.Tag{"d", identifier})
+
+	e := &nostr.Event{
+		Kind:      nostr.KindArticle,
+		Content:   "",
+		CreatedAt: nostr.Now(),
+		Tags:      tags,
+	}
 
 	n := &Note{Event: e}
 
-	err = s.fs.Store(n)
+	err := s.fs.Store(n)
 	if err != nil {
 		return nil, err
 	}
 
 	return n, nil
-}
-
-// 1. Store event in local working directory
-// 2. Store event in SQLite for fast querying
-func (s *FileStorage) Store(n *Note) error {
-
-	filename := fmt.Sprintf("%s/%s.md", s.dir, n.Identifier())
-
-	err := os.WriteFile(filename, []byte(n.Content), 0660)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"slices"
 	"sync"
@@ -117,7 +116,7 @@ func requestEventByIdentifier(ctx context.Context, nsec string, relays []string,
 	events := queryRelays(ctx, filter, relays)
 
 	if len(events) == 0 {
-		return nil, fmt.Errorf("not article found with identifier: %s", identifier)
+		return nil, ErrNoEvent
 	}
 
 	// Pop the lastest parameterized replaceable event
