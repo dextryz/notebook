@@ -1,88 +1,60 @@
-# NoteZero
+# Notebook
 
-View your nostr articles at [Ixian](https://ixian.me)
+- A personal notebook on your local machine.
+- Leverage nostr as an external database
+- View your nostr article notes at [Ixian](https://ixian.me)
 
-- Articles with no **headers** will not be shows.
-- Articles with no **identifier** will not be shows.
+## Setup
 
-## TODO
+The current notebook is set by defining the following env vars:
 
-- Implement CLI to publish articles.
-- Filter articles that have incorrect format and list them to user.
+- `NOTEBOOK`: The notebook name
+- `NOTEBOOK_DIR`: The path to where the notebook should store markdown files.
 
-## Flow
+## Nostr
 
-I will have to create a Notebook event on nostr too. Maybe this is like a bookmark or curated list?
-Dont need to store the content. Just the notebook ID. Each note in the notebook then should contain the notebook event uuid.
+If you want to use [nostr](www.nostr.com) as an external database to store and propagate your notes,
+you have to create a config file and set the `NOSTR` env var:
 
-Init creates a new notebook in the given directory. If the NOSTR env var is not 
-set, then we assume the user is not using nostr. If it is set, pull the user notes from nostr.
- 
-A notebook is created when:
-    - Explicity instance one using the CLI
-    - When you pull all your nostr articles into a defined directory.
-
-A note can only be created within a notebook instance.
-An env var defines the current notebook instance path.
-If this env is empty, no notebook is set.
-
-This means that pulling nostr artciles shoudl set this env.
-
-How will nostr keep track of notebooks? Hashtag or App specific tag like a TODO list?
-
-We only interact with a notebook. A notebook has to interact with nostr and the underlying database.
-
-## CLI Usage
-
-Title, tag, and publish an article to relays listed in config.
-
-Content can be a filename or a string containing the literally content.
-
-The notebook is set if the NOTEBOOK is specified and NOTEBOOK_DIR
-
-If NOSTR env var is set all nostr kind 30023 notes will be pulled into directory
-
-List all articles with their identifier
-
+Create your config file in `~/.config/nostr/dextryz.json` containing:
+```
+{
+    "nsec": "nsec..."
+    "relays": ["wss://relay.highlighter.com/", "wss://relay.damus.io/"],
+}
+```
+and the env var
 ```shell
-> nz list --notebooks
-nil
+export NOSTR=~/.config/nostr/dextryz.json`
 ```
 
-To start you have to initiate a notebook
+## Initialize a New Notebook
+
+To start you have to initiate a notebook:
 
 ```shell
-> export NOSTR=~/.config/nostr/dextryz.json
-
 > nz init --name slipbox --dir /tmp/slipbox
 notebook 'slipbox' created at 2023-04-13 in dir '/tmp/slipbox'
-
-> nz list --notebook slipbox
-notebook dir: /tmp/slipbox
 ```
 
-New should create a new file in the current notebook.
-THen init it on nostr by creating an event with an empty content.
-THis will set the title, tags, etc
-THis confusing. I might want to just create a file without any commitment.
+If you have no nostr account setup then the directory will be empty. However, if nostr is setup, it'll pull all your Kind 30023 notes (articles) into the directory with the filename being that of the article identifier.
+
+The `nz init` command will automatically set your `NOTEBOOK` and `NOTEBOOK_DIR` env vars.
+
+## Create a New Note
+
+The following command will create a new markdown file in your notebook directory.
 
 ```shell
-export NOTEBOOK=slipbox
 > nz new
 created file in notebook slipbox at:
 /tmp/slipbox/202404041212.md
 ```
 
-Update an article via their identifier
+## Publish a Note to Nostr
+
+If you have nostr setup, you can push your note with a title and set of tags. The note will be published to all relays specified in the `NOSTR` config file.
 
 ```shell
-export NOTEBOOK=slipbox
-> nz push --content 202402051756.md --title "Fake Knowledge" --tag nostr --tag bitcoin
-```
-```
-
-## TODO
-
-```shell
-> nz pull --title "Fake Knowledge" > 2023.md
+> nz push --content /tmp/slipbox/202404051040.md --title "Hello Friend" --tag nostr --tag bitcoin
 ```

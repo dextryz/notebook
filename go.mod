@@ -1,4 +1,4 @@
-module github.com/dextryz/nzctl
+module github.com/dextryz/notebook
 
 go 1.22.0
 
