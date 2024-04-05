@@ -1,29 +1,26 @@
 # Notebook
 
-- A personal notebook on your local machine.
-- Leverage nostr as an external database
-- View your nostr article notes at [Ixian](https://ixian.me)
+- A plain text note-taking assistant
+- Leverage [Nostr](www.nostr.com) as an external database
+- View your nostr published notes on [Ixian](https://ixian.me)
 
-## Setup
+## Setup Nostr
 
-The current notebook is set by defining the following env vars:
+*Notebook* interacts with nostr via long-form notes, as depicted in [NIP-23](https://github.com/nostr-protocol/nips/blob/master/23.md).
 
-- `NOTEBOOK`: The notebook name
-- `NOTEBOOK_DIR`: The path to where the notebook should store markdown files.
-
-## Nostr
-
-If you want to use [nostr](www.nostr.com) as an external database to store and propagate your notes,
-you have to create a config file and set the `NOSTR` env var:
+If you want to use [nostr](www.nostr.com) as an external database to store and propagate your notes, you have to create a config file and set the `NOSTR` env var:
 
 Create your config file in `~/.config/nostr/dextryz.json` containing:
+
 ```
 {
     "nsec": "nsec..."
     "relays": ["wss://relay.highlighter.com/", "wss://relay.damus.io/"],
 }
 ```
-and the env var
+
+and set the env var
+
 ```shell
 export NOSTR=~/.config/nostr/dextryz.json`
 ```
@@ -34,12 +31,12 @@ To start you have to initiate a notebook:
 
 ```shell
 > nz init --name slipbox --dir /tmp/slipbox
-notebook 'slipbox' created at 2023-04-13 in dir '/tmp/slipbox'
 ```
 
-If you have no nostr account setup then the directory will be empty. However, if nostr is setup, it'll pull all your Kind 30023 notes (articles) into the directory with the filename being that of the article identifier.
-
 The `nz init` command will automatically set your `NOTEBOOK` and `NOTEBOOK_DIR` env vars.
+
+- The `dir` will be emptry if you have no nostr account setup.
+- Is nostr is setup, `notebook` will populate the `dir` with all your kind 30023 notes.
 
 ## Create a New Note
 
@@ -50,6 +47,12 @@ The following command will create a new markdown file in your notebook directory
 created file in notebook slipbox at:
 /tmp/slipbox/202404041212.md
 ```
+
+- The filename is the article `identifier` as specified in [NIP-23](https://github.com/nostr-protocol/nips/blob/master/23.md).
+
+## Edit a Note
+
+Open the note with your favourite editor (hopefully NeoVim) and update the content.
 
 ## Publish a Note to Nostr
 
