@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"os"
+
+	eventstore_badger "github.com/fiatjaf/eventstore/badger"
 )
 
 // Business Invarients
@@ -24,15 +26,24 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	db := &eventstore_badger.BadgerBackend{
+		Path: "eventstore.db",
+	}
+	err = db.Init()
+	if err != nil {
+		panic(err)
+	}
+
 	// Since we want multiple commands to set a notebook we need
 	// general purpose container to check the current notebook state, the dtate of my editor and shell
-	container := NewContainer(cfg)
+	container := NewContainer(cfg, db)
 
 	cmds := []Runner{
 		NewInit(),
 		NewCreate(),
 		NewPush(),
 		NewList(),
+		NewSearch(),
 	}
 
 	args := os.Args[1:]

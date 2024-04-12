@@ -2,18 +2,15 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
+	"log/slog"
 	"os"
 )
 
-// Creates a notebook structure that abstracts the
-// local working directory.
+// Creates a notebook structure that abstracts the local working directory.
 
 type Init struct {
 	fs *flag.FlagSet
-
-	name string
-	dir  string
 }
 
 func NewInit() *Init {
@@ -21,9 +18,6 @@ func NewInit() *Init {
 	s := Init{
 		fs: flag.NewFlagSet("init", flag.ExitOnError),
 	}
-
-	s.fs.StringVar(&s.name, "name", "", "the filename to be committed")
-	s.fs.StringVar(&s.dir, "dir", "", "the filename to be committed")
 
 	return &s
 }
@@ -41,10 +35,12 @@ func (s *Init) Name() string {
 // 3. Stores each event in the notebook as a note
 func (s *Init) Run(container *Container) error {
 
-	os.Setenv("NOTEBOOK", s.name)
-	os.Setenv("NOTEBOOK_DIR", s.dir)
+	dir, ok := os.LookupEnv("NOTEBOOK")
+	if !ok {
+		return fmt.Errorf("NOTEBOOK env var not set")
+	}
 
-	nb := NewNotebook(container.cfg, s.name, s.dir)
+	nb := NewNotebook(container.cfg, container.db, dir)
 
 	notes, err := nb.Init()
 	if err != nil {
@@ -54,7 +50,7 @@ func (s *Init) Run(container *Container) error {
 	// Add the newly created notebook to the container
 	container.notebook = nb
 
-	log.Printf("notebook initiated with %d notes pulled from relays", len(notes))
+	slog.Info("notebook initiated with %d notes pulled from relays", "noteCount", len(notes))
 
 	return nil
 }

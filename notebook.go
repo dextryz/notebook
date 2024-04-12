@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"path"
 	"strings"
 	"time"
 
+	"github.com/fiatjaf/eventstore"
 	"github.com/nbd-wtf/go-nostr"
+	"github.com/nbd-wtf/go-nostr/nip19"
 )
 
 // 1. Notebook abstracts nostr, and therefore does not work with nostr.Event, rather with nz.Note
@@ -15,11 +18,11 @@ import (
 // Abstract working with nostr relays and local embedded database
 type Notebook struct {
 	cfg *Config
+	db  eventstore.Store
 	fs  *FileStorage
 }
 
-// TODO store notebook in KV storee
-func NewNotebook(cfg *Config, name, dir string) *Notebook {
+func NewNotebook(cfg *Config, db eventstore.Store, dir string) *Notebook {
 
 	fs := &FileStorage{
 		dir: dir,
@@ -27,11 +30,14 @@ func NewNotebook(cfg *Config, name, dir string) *Notebook {
 
 	return &Notebook{
 		cfg: cfg,
+		db:  db,
 		fs:  fs,
 	}
 }
 
 func (s *Notebook) Init() ([]*Note, error) {
+
+	ctx := context.Background()
 
 	// Create the directory structure on the filesystem
 	err := s.fs.Init()
@@ -48,6 +54,19 @@ func (s *Notebook) Init() ([]*Note, error) {
 		return nil, err
 	}
 
+	// 3. Store article events in local eventstore
+
+	wdb := eventstore.RelayWrapper{Store: s.db}
+
+	for _, e := range events {
+		err := wdb.Publish(ctx, *e)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 4. Store notes as markdown files on local filesystem
+
 	notes := []*Note{}
 	for _, e := range events {
 
@@ -59,6 +78,45 @@ func (s *Notebook) Init() ([]*Note, error) {
 			return nil, err
 		}
 
+		notes = append(notes, n)
+	}
+
+	return notes, nil
+}
+
+// TODO maybe move to nostr.go fix this fucking broken abstraction.
+// 1. This function only connects to the local eventstore.
+func (s *Notebook) Search(filter nostr.Filter) ([]*Note, error) {
+
+	ctx := context.Background()
+
+	var pub string
+	if _, s, err := nip19.Decode(s.cfg.Nsec); err == nil {
+		if pub, err = nostr.GetPublicKey(s.(string)); err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal(err)
+	}
+
+	filter.Authors = []string{pub}
+
+	// fetch from local store if available
+	wdb := eventstore.RelayWrapper{Store: s.db}
+
+	// Try to fetch in our internal eventstore (cache) first
+	events, err := wdb.QuerySync(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	if len(events) == 0 {
+		return nil, fmt.Errorf("no events found with search filter")
+	}
+
+	notes := []*Note{}
+	for _, e := range events {
+		n := &Note{Event: e}
+		n.Path = fmt.Sprintf("%s/%s.md", s.fs.dir, n.Identifier())
 		notes = append(notes, n)
 	}
 
