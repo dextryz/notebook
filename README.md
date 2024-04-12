@@ -22,7 +22,7 @@ Create your config file in `~/.config/nostr/dextryz.json` containing:
 and set the env var
 
 ```shell
-export NOSTR=~/.config/nostr/dextryz.json`
+> export NOSTR=~/.config/nostr/dextryz.json`
 ```
 
 ## Initialize a New Notebook
@@ -30,13 +30,11 @@ export NOSTR=~/.config/nostr/dextryz.json`
 To start you have to initiate a notebook:
 
 ```shell
-> nz init --name slipbox --dir /tmp/slipbox
+> export NOTEBOOk=/tmp/slipbox
+> nz init
 ```
 
-The `nz init` command will automatically set your `NOTEBOOK` and `NOTEBOOK_DIR` env vars.
-
-- The `dir` will be emptry if you have no nostr account setup.
-- Is nostr is setup, `notebook` will populate the `dir` with all your kind 30023 notes.
+- Is nostr is setup, `notebook` will populate the `NOTEBOOK` path with all your kind `30023` notes.
 
 ## Create a New Note
 

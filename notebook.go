@@ -146,31 +146,73 @@ func (s *Notebook) FindNotes() ([]*Note, error) {
 // 1. Read file content from local filesystem
 // 2. Pull event metadata. If event has not been pushed before, ignore
 // 3. Push event with updated content and parameters
+// The note has to be in the loval eventstore
 // TODO: Add a caching layer for the note object itself.
 func (s *Notebook) Publish(filepath, title string, hashtags []string) error {
+
+	// 1. Pull metedata from local eventstore
+
+	var pub string
+	if _, s, err := nip19.Decode(s.cfg.Nsec); err == nil {
+		if pub, err = nostr.GetPublicKey(s.(string)); err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal(err)
+	}
+
+	identifier := strings.TrimSuffix(path.Base(filepath), ".md")
+
+	filter := nostr.Filter{
+		Kinds:   []int{nostr.KindArticle},
+		Authors: []string{pub},
+		Tags: nostr.TagMap{
+			"d": []string{identifier},
+		},
+		Limit: 1,
+	}
+
+	// fetch from local store if available
+	wdb := eventstore.RelayWrapper{Store: s.db}
+
+	// Try to fetch in our internal eventstore (cache) first
+	events, err := wdb.QuerySync(context.Background(), filter)
+	if err != nil {
+		return err
+	}
+	if len(events) == 0 {
+		return fmt.Errorf("no events found with search filter")
+	}
+
+	e := events[0]
+
+	// 2. Update metadata
 
 	content, err := s.fs.Read(filepath)
 	if err != nil {
 		return err
 	}
+	e.Content = string(content)
 
 	var tags nostr.Tags
-
-	identifier := strings.TrimSuffix(path.Base(filepath), ".md")
-
-	tags = append(tags, nostr.Tag{"d", identifier})
-	tags = append(tags, nostr.Tag{"title", title})
-
+	// Add the old tags
+	tags = append(tags, e.Tags...)
+	// Update with new tags
+	if title != "" {
+		tags = append(tags, nostr.Tag{"title", title})
+	}
 	for _, v := range hashtags {
 		tags = append(tags, nostr.Tag{"t", v})
 	}
+	// Set new tagslist
+	e.Tags = tags
 
-	e := &nostr.Event{
-		Kind:      nostr.KindArticle,
-		Content:   string(content),
-		CreatedAt: nostr.Now(),
-		Tags:      tags,
-	}
+	//e := &nostr.Event{
+	//		Kind:      nostr.KindArticle,
+	//		Content:   string(content),
+	//		CreatedAt: nostr.Now(),
+	//		Tags:      tags,
+	//	}
 
 	// 1. Publish event to nostr relays for distributed/global storage
 
