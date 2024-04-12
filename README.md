@@ -59,3 +59,11 @@ If you have nostr setup, you can push your note with a title and set of tags. Th
 ```shell
 > nz push --content /tmp/slipbox/202404051040.md --title "Hello Friend" --tag nostr --tag bitcoin
 ```
+
+## Search Notes
+
+```
+./nb search --title Intuition
+
+./nb search --tag focus
+```
